@@ -27,7 +27,6 @@ struct Light_t
 uniform vec3        CameraPos;
 uniform Material_t  Material;
 uniform Light_t     Light;
-uniform sampler2D   Tex;
 uniform sampler2D   NoiseTex;
 
 
@@ -45,7 +44,6 @@ void main()
     float Spec = pow(max(dot(ViewDir, ReflectionDir), 0.0f), Material.SpecularExp);
     vec3 Specular = Light.Specular * (Spec * Material.Specular);
 
-    vec4 TexCol = texture(Tex, FragTex);
     vec4 Noise = texture(NoiseTex, FragTex);
     vec3 Result = Ambient + Diffuse + Specular;
     FragColor = vec4(Result, 1.0f) * (1 - Noise.x);

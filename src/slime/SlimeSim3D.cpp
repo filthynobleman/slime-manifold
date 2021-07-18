@@ -20,11 +20,14 @@ slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& M
     cudaErrorCheck(cudaAllocCopy<glm::ivec3>(&dT2T, T2T.data(), NTris));
     cudaErrorCheck(cudaCalloc<float>(&dTrailMap, TMTex.Width * TMTex.Height));
 
-    // Create the pixul buffer object
+    // Create the pixel buffer object
     glGenBuffers(1, &PBO);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBO);
     glBufferData(GL_PIXEL_UNPACK_BUFFER, TrailMapTex.Width * TrailMapTex.Height * sizeof(float), NULL, GL_DYNAMIC_COPY);
     cudaErrorCheck(cudaGLRegisterBufferObject(PBO));
+
+    // Create slime exporter
+    Exporter = new SlimeExporter("output", TMTex);
 }
 
 
@@ -37,6 +40,8 @@ slime::SlimeSim3D::~SlimeSim3D()
     cudaErrorCheck(cudaFree(dTris));
     cudaErrorCheck(cudaFree(dT2T));
     cudaErrorCheck(cudaFree(dTrailMap));
+    if (Exporter != NULL)
+        delete Exporter;
 }
 
 
@@ -62,9 +67,23 @@ void slime::SlimeSim3D::DiffuseTrail()
     cudaErrorCheck(cudaGLUnmapBufferObject(PBO));
 }
 
+void slime::SlimeSim3D::SimulationStep()
+{
+    for (int i = 0; i < Params.StepsPerFrame; ++i)
+    {
+        UpdatePositions();
+        DiffuseTrail();
+    }
+}
+
 void slime::SlimeSim3D::WriteTexture()
 {
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBO);
     glBindTexture(GL_TEXTURE_2D, TrailMapTex.BufIdx);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TrailMapTex.Width, TrailMapTex.Height, GL_RED, GL_FLOAT, NULL);
+}
+
+void slime::SlimeSim3D::ExportFrame()
+{
+    Exporter->ExportFrame(dTrailMap);
 }

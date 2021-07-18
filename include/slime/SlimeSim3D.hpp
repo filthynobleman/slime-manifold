@@ -20,6 +20,7 @@
 #include <mesh/Mesh.hpp>
 #include <slime/SimulationParameters.hpp>
 #include <render/Material.hpp>
+#include <slime/SlimeExporter.hpp>
 
 namespace slime
 {
@@ -47,6 +48,7 @@ private:
     const render::Texture           TrailMapTex;
     int                             NVerts;
     int                             NTris;
+    SlimeExporter*                  Exporter;
 
     void LaunchInitAgentsKernel();
     void LaunchUpdatePositionsKernel();
@@ -59,9 +61,11 @@ public:
     ~SlimeSim3D();
 
     void InitAgents();
+    void SimulationStep();
     void UpdatePositions();
     void DiffuseTrail();
     void WriteTexture();
+    void ExportFrame();
 };
 
 

@@ -31,7 +31,9 @@ add_library(Slime STATIC    src/slime/SimulationParameters.cpp
                             src/slime/SlimeSim3D.cpp
                             src/slime/InitAgents3D.cu
                             src/slime/UpdatePos3D.cu
-                            src/slime/DiffuseTrail3D.cu)
+                            src/slime/DiffuseTrail3D.cu
+                            src/slime/SlimeExporter.cpp
+                            src/slime/SlimeExporter.cu)
 
 target_link_libraries(Render Mesh STB)
 

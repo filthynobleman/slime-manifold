@@ -37,6 +37,8 @@ SimulationParameters slime::LoadFromFile(const std::string& Filename)
             std::sscanf(Line.c_str(), "MoveSpeed=%f", &(Params.MoveSpeed));
         else if (Line.rfind("TurnSpeed", 0) == 0)
             std::sscanf(Line.c_str(), "TurnSpeed=%f", &(Params.TurnSpeed));
+        else if (Line.rfind("MoveStep", 0) == 0)
+            std::sscanf(Line.c_str(), "MoveStep=%f", &(Params.MoveStep));
             
         else if (Line.rfind("VisionAngle", 0) == 0)
             std::sscanf(Line.c_str(), "VisionAngle=%f", &(Params.VisionAngle));
@@ -51,6 +53,9 @@ SimulationParameters slime::LoadFromFile(const std::string& Filename)
             std::sscanf(Line.c_str(), "DiffuseRate=%f", &(Params.DiffuseRate));
         else if (Line.rfind("TrailWeight", 0) == 0)
             std::sscanf(Line.c_str(), "TrailWeight=%f", &(Params.TrailWeight));
+            
+        else if (Line.rfind("StepsPerFrame", 0) == 0)
+            std::sscanf(Line.c_str(), "StepsPerFrame=%d", &(Params.StepsPerFrame));
     }
 
     Stream.close();

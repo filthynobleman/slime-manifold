@@ -166,16 +166,21 @@ std::vector<glm::ivec3> mesh::MeshLoader::GetTri2TriAdjMap() const
         glm::ivec2 Ts = (*Eit).second;
         for (int j = 0; j < 3; ++j)
         {
-            if (T2T[Ts[0]][j] == -1)
+            Edge Opp(TPos[Ts[0]][(j + 1) % 3], TPos[Ts[0]][(j + 2) % 3]);
+            if (Eit->first == Opp)
             {
                 T2T[Ts[0]][j] = Ts[1];
                 break;
             }
         }
 
+        if (Ts[1] < 0)
+            continue;
+            
         for (int j = 0; j < 3; ++j)
         {
-            if (T2T[Ts[1]][j] == -1)
+            Edge Opp(TPos[Ts[1]][(j + 1) % 3], TPos[Ts[1]][(j + 2) % 3]);
+            if (Eit->first == Opp)
             {
                 T2T[Ts[1]][j] = Ts[0];
                 break;

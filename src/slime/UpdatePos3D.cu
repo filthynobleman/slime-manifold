@@ -9,6 +9,7 @@ using namespace slime;
 struct EndPos
 {
     glm::vec2   Pos;
+    glm::vec2   Dir;
     int         TriID;
 };
 
@@ -73,6 +74,22 @@ __device__ glm::vec3 BarycToD3(glm::vec3 Coords, glm::vec3 V1, glm::vec3 V2, glm
     return Coords.x * V1 + Coords.y * V2 + Coords.z * V3;
 }
 
+__device__ glm::vec3 TriNorm(glm::vec3 P1, glm::vec3 P2, glm::vec3 P3)
+{
+    // Get edges
+    glm::vec3 E12 = P2 - P1;
+    glm::vec3 E23 = P3 - P2;
+    glm::vec3 E31 = P1 - P3;
+
+    // Compute normal
+    glm::vec3 N = glm::cross(E12, -E31);
+    N = N + glm::cross(E23, -E12);
+    N = N + glm::cross(E31, -E23);
+    N = glm::normalize(N);
+
+    return N;
+}
+
 __device__ glm::vec4 ProjOnTri(glm::vec3 P, glm::vec3 P1, glm::vec3 P2, glm::vec3 P3)
 {
     // Get edges
@@ -97,10 +114,11 @@ __device__ glm::vec4 ProjOnTri(glm::vec3 P, glm::vec3 P1, glm::vec3 P2, glm::vec
 }
 
 
-__device__ EndPos CalcEndPosition(glm::vec2 Pos, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T)
+__device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T)
 {
     EndPos ep;
     ep.Pos = Pos;
+    ep.Dir = Move;
     ep.TriID = TriID;
 
     // Get the vertex indices of the triangles
@@ -112,58 +130,83 @@ __device__ EndPos CalcEndPosition(glm::vec2 Pos, int TriID, mesh::Triangle* Tris
     glm::vec2 UV3 = Verts[TV[2]].TexUV;
 
     // Convert to barycentric
-    glm::vec3 L = D2ToBaryc(ep.Pos, UV1, UV2, UV3);
+    glm::vec3 L = D2ToBaryc(Pos + Move, UV1, UV2, UV3);
 
     // Non-negative coordinates = point inside
     if (L.x >= 0 && L.y >= 0 && L.z >= 0)
-        return ep;  // Input position was good
-
-    // Get vertices positions
-    glm::vec3 V1 = Verts[TV[0]].Position;
-    glm::vec3 V2 = Verts[TV[1]].Position;
-    glm::vec3 V3 = Verts[TV[2]].Position;
-
-    // Go to 3D space
-    glm::vec3 P3D = BarycToD3(L, V1, V2, V3);
-
-    // Search the neirest adjacent triangle
-    glm::vec4 ProjDist(0.0f, 0.0f, 0.0f, 1e9f);
-    int Neirest = 0;
-    int i = 0;
-    for (i = 0; i < 3; ++i)
     {
-        // Get adjacent triangle and its vertices
-        int AdjTri = T2T[TriID][i];
-        glm::vec3 AV1 = Verts[Tris[AdjTri].Verts[0]].Position;
-        glm::vec3 AV2 = Verts[Tris[AdjTri].Verts[1]].Position;
-        glm::vec3 AV3 = Verts[Tris[AdjTri].Verts[2]].Position;
-        // Project
-        glm::vec4 ProjDistLoc = ProjOnTri(P3D, AV1, AV2, AV3);
-        // If distance is (in absolute) less than previous, set current triangle
-        if (abs(ProjDistLoc.w) < abs(ProjDist.w))
+        ep.Pos += Move;
+        return ep;
+    }
+
+    // Find the edge we crossed while going out. It is the negative coordinate
+    int CrossEdge = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        if (L[i] < 0)
         {
-            ProjDist = ProjDistLoc;
-            Neirest = AdjTri;
+            CrossEdge = i;
+            break;
         }
     }
 
-    // Convert to barycentric in adjacent triangle
-    TV = Tris[Neirest].Verts;
-    UV1 = Verts[TV[0]].TexUV;
-    UV2 = Verts[TV[1]].TexUV;
-    UV3 = Verts[TV[2]].TexUV;
+    // Get the triangle where we end to
+    int AdjTri = T2T[TriID][CrossEdge];
+    // If we are at boundary, don't move and go back
+    if (AdjTri < 0)
+    {
+        ep.Dir = -Move;
+        return;
+    }
+
+    // Get 3D position of point w.r.t. current triangle
+    glm::vec3 V1 = Verts[TV[0]].Position;
+    glm::vec3 V2 = Verts[TV[1]].Position;
+    glm::vec3 V3 = Verts[TV[2]].Position;
+    glm::vec3 P3D = BarycToD3(L, V1, V2, V3);
+    glm::vec3 Orig3D = BarycToD3(D2ToBaryc(Pos, UV1, UV2, UV3), V1, V2, V3);
+
+    // Project on the adjacent triangle
+    TV = Tris[AdjTri].Verts;
     V1 = Verts[TV[0]].Position;
     V2 = Verts[TV[1]].Position;
     V3 = Verts[TV[2]].Position;
-    glm::vec3 Proj(ProjDist.x, ProjDist.y, ProjDist.z);
-    L = D3ToBaryc(Proj, V1, V2, V3);
-    // Adjust barycentric
+    glm::vec4 Proj = ProjOnTri(P3D, V1, V2, V3);
+    glm::vec3 NewP3D(Proj.x, Proj.y, Proj.z);
+    Proj = ProjOnTri(P3D + 1.0f * (P3D - Orig3D), V1, V2, V3);
+    glm::vec3 Far3D(Proj.x, Proj.y, Proj.z);
+
+    // Get barycentric coordinates, and adjust
+    L = D3ToBaryc(NewP3D, V1, V2, V3);
     L /= (L.x + L.y + L.z);
-    // And from barycentric to texture
+
+    // Back to 2D
+    UV1 = Verts[TV[0]].TexUV;
+    UV2 = Verts[TV[1]].TexUV;
+    UV3 = Verts[TV[2]].TexUV;
     ep.Pos = BarycToD2(L, UV1, UV2, UV3);
 
-    // Update triangle id and return
-    ep.TriID = Neirest;
+    // Pick 2D of far point
+    L = D3ToBaryc(Far3D, V1, V2, V3);
+    L /= (L.x + L.y + L.z);
+    ep.Dir = BarycToD2(L, UV1, UV2, UV3);
+
+    // Get new triangle ID
+    ep.TriID = AdjTri;
+    ep.Dir -= ep.Pos;
+    ep.Dir = glm::length(Move) * glm::normalize(ep.Dir);
+    return ep;
+}
+
+__device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, SimulationParameters Params)
+{
+    // Get the number of steps and scale the movement
+    int NumSteps = (int)glm::ceil(glm::length(Move) / Params.MoveStep);
+    Move = Params.MoveStep * glm::normalize(Move);
+    // Apply steps iteratively
+    EndPos ep = { Pos, Move, TriID };
+    for (int i = 0; i < NumSteps; ++i)
+        ep = CalcEndPositionStep(ep.Pos, ep.Dir, ep.TriID, Tris, Verts, T2T);
     return ep;
 }
 
@@ -191,19 +234,19 @@ __device__ Agent NextDir(Agent A, float* TrailMap, int Width, int Height,
     glm::vec2 Dir(glm::cos(A.Angle), glm::sin(A.Angle));
 
     // Look forward
-    EndPos SensorFwd = CalcEndPosition(A.Pos + Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T);
+    EndPos SensorFwd = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, Params);
     float Fwd = Sense(SensorFwd.Pos, TrailMap, Width, Height, Params);
 
     // Look right
     Dir.x = glm::cos(A.Angle + glm::radians(Params.VisionAngle));
     Dir.y = glm::sin(A.Angle + glm::radians(Params.VisionAngle));
-    EndPos SensorRight = CalcEndPosition(A.Pos + Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T);
+    EndPos SensorRight = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, Params);
     float Right = Sense(SensorRight.Pos, TrailMap, Width, Height, Params);
 
     // Look left
     Dir.x = glm::cos(A.Angle - glm::radians(Params.VisionAngle));
     Dir.y = glm::sin(A.Angle - glm::radians(Params.VisionAngle));
-    EndPos SensorLeft = CalcEndPosition(A.Pos + Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T);
+    EndPos SensorLeft = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, Params);
     float Left = Sense(SensorLeft.Pos, TrailMap, Width, Height, Params);
 
 
@@ -241,28 +284,11 @@ __global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, int Width,
     Agent A = Agents[AgentID];
     A = NextDir(A, TrailMap, Width, Height, Verts, Tris, T2T, Params);
 
-    // Compute the end position
+    // Move the agent
     glm::vec2 Dir(glm::cos(A.Angle), glm::sin(A.Angle));
-    glm::vec2 Move = Dir * Params.MoveSpeed * Params.DeltaTime;
-    EndPos ep = CalcEndPosition(A.Pos + Move, A.TriID, Tris, Verts, T2T);
-    EndPos dep = CalcEndPosition(A.Pos + 2.0f * Move, A.TriID, Tris, Verts, T2T);
+    EndPos ep = CalcEndPosition(A.Pos, Dir * Params.MoveSpeed * Params.DeltaTime, A.TriID, Tris, Verts, T2T, Params);
     A.Pos = ep.Pos;
-    // If agent exits from the triangle
-    if (A.TriID != ep.TriID)
-    {
-        // Next direction is determined by the delta between ep and dep, if they are on the same triangle
-        if (ep.TriID == dep.TriID)
-        {
-            glm::vec2 NewDir = dep.Pos - ep.Pos;
-            A.Angle = glm::atan(NewDir.y, NewDir.x);
-        }
-        // Otherwise we take the direction at random
-        else
-        {
-            A.RandState = RandHash(A.RandState);
-            A.Angle = ScaleTo01(A.RandState) * 3.14159265;
-        }
-    }
+    A.Angle = glm::atan(ep.Dir.y, ep.Dir.x);
     A.TriID = ep.TriID;
     Agents[AgentID] = A;
 

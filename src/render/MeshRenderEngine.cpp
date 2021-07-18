@@ -38,6 +38,8 @@ float render::MeshRenderEngine::ActionDelay     = 0.1f;
 GLenum render::MeshRenderEngine::PolyModes[2]   = { GL_FILL, GL_LINE };
 int render::MeshRenderEngine::CurMode           = 0;
 
+bool render::MeshRenderEngine::Export           = false;
+
 
 std::vector<Texture> render::MeshRenderEngine::Textures;
 std::vector<std::string> render::MeshRenderEngine::TexNames;
@@ -179,6 +181,9 @@ void render::MeshRenderEngine::ProcessInput()
             glfwGetKey(Window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
                 Zoom = DefaultZoom;
     }
+    // E = export texture
+    if (glfwGetKey(Window, GLFW_KEY_E) == GLFW_PRESS)
+        Export = true;
 
     // Update action time
     LastActionTime = glfwGetTime();
@@ -186,7 +191,18 @@ void render::MeshRenderEngine::ProcessInput()
 
 float render::MeshRenderEngine::GetDeltaTime()
 {
-    return CurTime - OldTime;
+    // return CurTime - OldTime;
+    return 1.0f / 60.0f;
+}
+
+bool render::MeshRenderEngine::MustExport()
+{
+    if (Export)
+    {
+        Export = false;
+        return true;
+    }
+    return false;
 }
 
 

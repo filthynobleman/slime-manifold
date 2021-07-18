@@ -9,12 +9,12 @@ This section briefly describes the steps required to run the program.
 
 ### Requirements
 In order to compile and execute the simulation, the following libraries and programs are needed:
-    - `GLAD`
-    - `GLFW`
-    - `GLM`
-    - `STB Image`
-    - `CUDA` (tested on v10.2)
-    - `CMake` (tested on v3.19)
+ - `GLAD`
+ - `GLFW`
+ - `GLM`
+ - `STB Image`
+ - `CUDA` (tested on v10.2)
+ - `CMake` (tested on v3.19)
 
 The build has been tested on Windows, but it **should** work on any operating system.
 
@@ -22,16 +22,16 @@ The build has been tested on Windows, but it **should** work on any operating sy
 ### Compilation
 To compile the source code please execute the following commands:
 ```
-        mkdir build
-        cmake ..
-        cmake --build .
+    mkdir build
+    cmake ..
+    cmake --build .
 ```
 
 
 ## Execution
-The compilation process will generate an executable `Slime3D.exe` in the directory `Debug/` inside the build directory.  
+The compilation process will generate an executable `Slime3D.exe` in the directory `Debug\` inside the build directory.  
 The program can then be executed by typing
 ```
-    Debug\Slime3D.exe
+    .\Debug\Slime3D.exe
 ```
 from the build directory.

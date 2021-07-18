@@ -29,6 +29,7 @@ struct SimulationParameters
     int         AgentGridSize;
 
     float       MoveSpeed;
+    float       MoveStep;
     float       TurnSpeed;
 
     float       VisionAngle;
@@ -37,6 +38,7 @@ struct SimulationParameters
 
     float       Time;
     float       DeltaTime;
+    int         StepsPerFrame;
 
     float       DecayRate;
     float       DiffuseRate;

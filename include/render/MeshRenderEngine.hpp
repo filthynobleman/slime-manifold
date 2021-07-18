@@ -44,6 +44,8 @@ private:
 
     static GLenum   PolyModes[2];
     static int      CurMode;
+
+    static bool     Export;
     
 public:
     static void CreateBuffers(const mesh::Mesh& M);
@@ -56,6 +58,8 @@ public:
     static void SetCallbacks();
 
     static float GetDeltaTime();
+
+    static bool MustExport();
 
     static void BindAllTextures();
     static void Draw();
