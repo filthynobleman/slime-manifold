@@ -30,7 +30,7 @@ void Usage(const char* argv0)
 {
     std::cerr << "Bad syntax." << std::endl;
     std::cerr << "Correct syntax for calling " << argv0 << " is" << std::endl;
-    std::cerr << "    " << argv0 << " config_file obj_file [ tex_res [mtl_file [light_file]]]" << std::endl;
+    std::cerr << "    " << argv0 << " config_file obj_file [ tex_res [export_video [mtl_file [light_file]]]]" << std::endl;
 }
 
 
@@ -47,14 +47,17 @@ int main(int argc, const char** argv)
         std::string ConfigFile(argv[1]);
         std::string MeshFile(argv[2]);
         GLuint TexRes = 1024;
+        bool ExportVideo = false;
         if (argc > 3)
             TexRes = std::atoi(argv[3]);
-        std::string MatFile("../data/meshes/default.mtl");
         if (argc > 4)
-            MatFile = argv[4];
-        std::string LightFile("../data/meshes/default.light");
+            ExportVideo = std::atoi(argv[4]) > 0;
+        std::string MatFile("../data/meshes/default.mtl");
         if (argc > 5)
-            LightFile = argv[5];
+            MatFile = argv[5];
+        std::string LightFile("../data/meshes/default.light");
+        if (argc > 6)
+            LightFile = argv[6];
 
 
         mesh::MeshLoader ML;
@@ -70,13 +73,30 @@ int main(int argc, const char** argv)
         // render::Texture Plaster = render::LoadTexture("../data/textures/white_plaster_01_diffuse.png");
         // render::Texture Concrete = render::LoadTexture("../data/textures/green_concrete_pavement_diffuse.png");
         // render::Texture Slime = render::CreateTexture(4096, 4096, GL_RED);
-        render::Texture Slime = render::CreateTexture(TexRes, TexRes, GL_RED);
+        slime::SimulationParameters Params = slime::LoadFromFile(ConfigFile);
+        GLenum Format;
+        switch (Params.NumSpecies)
+        {
+        case 1:
+            Format = GL_RED;
+            break;
+        case 2:
+            Format = GL_RG;
+            break;
+        case 3:
+            Format = GL_RGB;
+            break;
+        
+        default:
+            throw std::exception("Invalid number of species.");
+        }
+        render::Texture Slime = render::CreateTexture(TexRes, TexRes, Format);
         render::MeshRenderEngine::CreateBuffers(M);
         render::MeshRenderEngine::SetMaterial(Material);
         render::MeshRenderEngine::SetLight(Light);
         // render::MeshRenderEngine::AddTexture("Plaster", Plaster);
         // render::MeshRenderEngine::AddTexture("Concrete", Concrete);
-        // render::MeshRenderEngine::AddTexture("Slime", Slime);
+        render::MeshRenderEngine::AddTexture("NoiseTex", Slime);
 
         slime::SlimeSim3D SS3D(ConfigFile, M, ML.GetTri2TriAdjMap(), Slime);
         SS3D.InitAgents();
@@ -84,13 +104,11 @@ int main(int argc, const char** argv)
         unsigned int NumFrame = 0;
         while (!render::MeshRenderEngine::ShouldClose())
         {
-            // SS3D.UpdatePositions();
-            // SS3D.DiffuseTrail();
             SS3D.SimulationStep();
             SS3D.WriteTexture();
             render::MeshRenderEngine::Draw();
 
-            if (render::MeshRenderEngine::MustExport())
+            if (render::MeshRenderEngine::MustExport() || ExportVideo)
                 SS3D.ExportFrame();
         }
     }

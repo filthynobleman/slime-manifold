@@ -30,6 +30,7 @@ struct Agent
     glm::vec2       Pos;
     float           Angle;
     int             TriID;
+    int             SpeciesID;
     unsigned int    RandState;
 };
 
@@ -41,11 +42,14 @@ private:
     glm::ivec3*                     dT2T;
     mesh::Vertex*                   dVerts;
     mesh::Triangle*                 dTris;
+    float*                          UVTo3D;
     float*                          dTrailMap;
+    unsigned char*                  dObstacle;
     float*                          dDiffuseTrail;
     GLuint                          PBO;
     SimulationParameters            Params;
     const render::Texture           TrailMapTex;
+    const render::Texture           ObstacleTex;
     int                             NVerts;
     int                             NTris;
     SlimeExporter*                  Exporter;
@@ -58,6 +62,9 @@ private:
 public:
     SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
                const std::vector<glm::ivec3>& T2T, const render::Texture& TMTex);
+    SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
+               const std::vector<glm::ivec3>& T2T, const render::Texture& TMTex,
+               const unsigned char* Obstacle, const render::Texture& ObstacleTex);
     ~SlimeSim3D();
 
     void InitAgents();

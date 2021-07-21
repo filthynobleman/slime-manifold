@@ -46,5 +46,5 @@ void main()
 
     vec4 Noise = texture(NoiseTex, FragTex);
     vec3 Result = Ambient + Diffuse + Specular;
-    FragColor = vec4(Result, 1.0f) * (1 - Noise.x);
+    FragColor = vec4(Result, 1.0f) * Noise;
 }

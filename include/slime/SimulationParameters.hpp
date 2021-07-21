@@ -27,6 +27,7 @@ struct SimulationParameters
 
     int         NumAgents;
     int         AgentGridSize;
+    int         NumSpecies;
 
     float       MoveSpeed;
     float       MoveStep;

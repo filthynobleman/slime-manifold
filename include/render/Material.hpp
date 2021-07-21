@@ -52,6 +52,7 @@ struct Light
 Material    LoadMaterial(const std::string& filename);                          // only reads Ka, Kd, Ks, Ns from .mtl files
 Light       LoadLight(const std::string& filename);                             // same as .mtl files, but with parameter XYZ and without Ns
 Texture     LoadTexture(const std::string& filename);                           // uint texture
+Texture     LoadTexture(const std::string& filename, unsigned char** data);     // uint texture
 Texture     CreateTexture(GLuint Width, GLuint Height, GLenum Format);          // float texture
 
 

@@ -114,7 +114,7 @@ __device__ glm::vec4 ProjOnTri(glm::vec3 P, glm::vec3 P1, glm::vec3 P2, glm::vec
 }
 
 
-__device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T)
+__device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D)
 {
     EndPos ep;
     ep.Pos = Pos;
@@ -130,7 +130,7 @@ __device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, 
     glm::vec2 UV3 = Verts[TV[2]].TexUV;
 
     // Convert to barycentric
-    glm::vec3 L = D2ToBaryc(Pos + Move, UV1, UV2, UV3);
+    glm::vec3 L = D2ToBaryc(Pos + Move / UV3D[TriID], UV1, UV2, UV3);
 
     // Non-negative coordinates = point inside
     if (L.x >= 0 && L.y >= 0 && L.z >= 0)
@@ -198,7 +198,7 @@ __device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, 
     return ep;
 }
 
-__device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, SimulationParameters Params)
+__device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D, SimulationParameters Params)
 {
     // Get the number of steps and scale the movement
     int NumSteps = (int)glm::ceil(glm::length(Move) / Params.MoveStep);
@@ -206,11 +206,11 @@ __device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh
     // Apply steps iteratively
     EndPos ep = { Pos, Move, TriID };
     for (int i = 0; i < NumSteps; ++i)
-        ep = CalcEndPositionStep(ep.Pos, ep.Dir, ep.TriID, Tris, Verts, T2T);
+        ep = CalcEndPositionStep(ep.Pos, ep.Dir, ep.TriID, Tris, Verts, T2T, UV3D);
     return ep;
 }
 
-__device__ float Sense(glm::vec2 Centre, float* TrailMap, int Width, int Height, SimulationParameters Params)
+__device__ float Sense(glm::vec2 Centre, int SpeciesID, float* TrailMap, unsigned char* Obstacle, int Width, int Height, SimulationParameters Params)
 {
     glm::ivec2 Coords(int(Centre.x * (Width - 1)), int(Centre.y * (Height - 1)));
     float Sum = 0.0f;
@@ -220,34 +220,44 @@ __device__ float Sense(glm::vec2 Centre, float* TrailMap, int Width, int Height,
         for (int dy = -Params.SensorRadius; dy <= Params.SensorRadius; ++dy)
         {
             int Y = glm::clamp(Coords.y + dy, 0, Height - 1);
-            Sum += TrailMap[Y * Width + X];
+            int Idx = Y * Width + X;
+            for (int k = 0; k < Params.NumSpecies; ++k)
+            {
+                float Sign = (k == SpeciesID) ? 1.0f : -1.0f;
+                Sum += Sign * TrailMap[Idx * Params.NumSpecies + k];
+            }
+            if (Obstacle != NULL)
+            {
+                float ObstacleValue = Obstacle[Idx] / 255.0f;
+                Sum -= (TrailMap[Idx * Params.NumSpecies + SpeciesID] + 1) * ObstacleValue;
+            }
         }
     }
     return Sum;
 }
 
-__device__ Agent NextDir(Agent A, float* TrailMap, int Width, int Height, 
-                         mesh::Vertex* Verts, mesh::Triangle* Tris, glm::ivec3* T2T, 
+__device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* Obstacle, int Width, int Height, 
+                         mesh::Vertex* Verts, mesh::Triangle* Tris, glm::ivec3* T2T, float* UV3D,
                          SimulationParameters Params)
 {
     // Get direction
     glm::vec2 Dir(glm::cos(A.Angle), glm::sin(A.Angle));
 
     // Look forward
-    EndPos SensorFwd = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, Params);
-    float Fwd = Sense(SensorFwd.Pos, TrailMap, Width, Height, Params);
+    EndPos SensorFwd = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, UV3D, Params);
+    float Fwd = Sense(SensorFwd.Pos, A.SpeciesID, TrailMap, Obstacle, Width, Height, Params);
 
     // Look right
     Dir.x = glm::cos(A.Angle + glm::radians(Params.VisionAngle));
     Dir.y = glm::sin(A.Angle + glm::radians(Params.VisionAngle));
-    EndPos SensorRight = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, Params);
-    float Right = Sense(SensorRight.Pos, TrailMap, Width, Height, Params);
+    EndPos SensorRight = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, UV3D, Params);
+    float Right = Sense(SensorRight.Pos, A.SpeciesID, TrailMap, Obstacle, Width, Height, Params);
 
     // Look left
     Dir.x = glm::cos(A.Angle - glm::radians(Params.VisionAngle));
     Dir.y = glm::sin(A.Angle - glm::radians(Params.VisionAngle));
-    EndPos SensorLeft = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, Params);
-    float Left = Sense(SensorLeft.Pos, TrailMap, Width, Height, Params);
+    EndPos SensorLeft = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, UV3D, Params);
+    float Left = Sense(SensorLeft.Pos, A.SpeciesID, TrailMap, Obstacle, Width, Height, Params);
 
 
     // If greater concentration of pheromone is forward, go ahead
@@ -260,10 +270,10 @@ __device__ Agent NextDir(Agent A, float* TrailMap, int Width, int Height,
     float Turn = Params.TurnSpeed * Params.DeltaTime * 3.14159265;
 
     // If concentration forward is very small, act randomly
-    if (Fwd < Left && Fwd < Right)
-        A.Angle += (RandSteer - 0.5f) * 2 * Turn;
+    // if (Fwd < Left && Fwd < Right)
+    //     A.Angle += (RandSteer - 0.5f) * 2 * Turn;
     // If left is greater, go left
-    else if (Left > Right)
+    if (Left > Right)
         A.Angle -= RandSteer * Turn;
     // If right is greater, go right
     else
@@ -273,8 +283,9 @@ __device__ Agent NextDir(Agent A, float* TrailMap, int Width, int Height,
 }
 
 
-__global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, int Width, int Height, SimulationParameters Params,
-                                      mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T)
+__global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, unsigned char* Obstacle, int Width, int Height, 
+                                      SimulationParameters Params,
+                                      mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D)
 {
     int AgentID = blockDim.x * blockIdx.x + threadIdx.x;
     if (AgentID >= Params.NumAgents)
@@ -282,11 +293,11 @@ __global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, int Width,
 
     // Get the agent and determine direction
     Agent A = Agents[AgentID];
-    A = NextDir(A, TrailMap, Width, Height, Verts, Tris, T2T, Params);
+    A = NextDir(A, TrailMap, Obstacle, Width, Height, Verts, Tris, T2T, UV3D, Params);
 
     // Move the agent
     glm::vec2 Dir(glm::cos(A.Angle), glm::sin(A.Angle));
-    EndPos ep = CalcEndPosition(A.Pos, Dir * Params.MoveSpeed * Params.DeltaTime, A.TriID, Tris, Verts, T2T, Params);
+    EndPos ep = CalcEndPosition(A.Pos, Dir * Params.MoveSpeed * Params.DeltaTime, A.TriID, Tris, Verts, T2T, UV3D, Params);
     A.Pos = ep.Pos;
     A.Angle = glm::atan(ep.Dir.y, ep.Dir.x);
     A.TriID = ep.TriID;
@@ -297,7 +308,8 @@ __global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, int Width,
     int Y = (int)(A.Pos.y * (Height - 1));
     X = glm::clamp(X, 0, Width - 1);
     Y = glm::clamp(Y, 0, Height - 1);
-    TrailMap[Y * Width + X] = 1.0f;
+    int Idx = Y * Width + X;
+    TrailMap[Idx * Params.NumSpecies + A.SpeciesID] = 1.0f;
 }
 
 
@@ -307,6 +319,6 @@ void slime::SlimeSim3D::LaunchUpdatePositionsKernel()
 {
     dim3 bSize(1024);
     dim3 gSize((Params.NumAgents + bSize.x - 1) / bSize.x);
-    UpdatePositionsKernel<<<gSize, bSize>>>(dAgents, dTrailMap, TrailMapTex.Width, TrailMapTex.Height, Params, dTris, dVerts, dT2T);
+    UpdatePositionsKernel<<<gSize, bSize>>>(dAgents, dTrailMap, dObstacle, TrailMapTex.Width, TrailMapTex.Height, Params, dTris, dVerts, dT2T, UVTo3D);
     cudaErrorCheck(cudaDeviceSynchronize());
 }

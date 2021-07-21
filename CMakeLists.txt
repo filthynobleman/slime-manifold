@@ -40,13 +40,20 @@ target_link_libraries(Render Mesh STB)
 
 # Executables
 add_executable(Slime3D src/slime3d.cpp)
+add_executable(SlimeObstacle3D src/slime3dobstacle.cpp)
 target_compile_options(Slime3D PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
                        --generate-line-info
                        --use_fast_math
                        --relocatable-device-code=true
                        >)
+target_compile_options(SlimeObstacle3D PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+                        --generate-line-info
+                        --use_fast_math
+                        --relocatable-device-code=true
+                        >)
 
 target_link_libraries(Slime3D Render Mesh Slime STB GLAD glfw OpenGL::GL cudart)
+target_link_libraries(SlimeObstacle3D Render Mesh Slime STB GLAD glfw OpenGL::GL cudart)
 
 
 # Copy shaders to build directory

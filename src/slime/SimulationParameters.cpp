@@ -11,6 +11,7 @@ using namespace slime;
 SimulationParameters slime::LoadFromFile(const std::string& Filename)
 {
     SimulationParameters Params;
+    Params.NumSpecies = 1;
 
     std::ifstream Stream;
     Stream.open(Filename, std::ios::in);
@@ -32,6 +33,8 @@ SimulationParameters slime::LoadFromFile(const std::string& Filename)
             std::sscanf(Line.c_str(), "NumAgents=%d", &(Params.NumAgents));
             Params.AgentGridSize = (int)ceil(sqrt(Params.NumAgents));
         }
+        else if (Line.rfind("NumSpecies", 0) == 0)
+            std::sscanf(Line.c_str(), "NumSpecies=%d", &(Params.NumSpecies));
 
         else if (Line.rfind("MoveSpeed", 0) == 0)
             std::sscanf(Line.c_str(), "MoveSpeed=%f", &(Params.MoveSpeed));
@@ -62,6 +65,13 @@ SimulationParameters slime::LoadFromFile(const std::string& Filename)
 
     Params.Time = 0.0f;
     Params.DeltaTime = 0.0f;
+    
+    if (Params.NumSpecies > 3)
+    {
+        std::stringstream ss;
+        ss << "You cannot have more than three species. Requested " << Params.NumSpecies << " species.";
+        throw std::exception(ss.str().c_str());
+    }
 
     return Params;
 }

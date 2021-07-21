@@ -28,6 +28,7 @@ private:
     unsigned char*  dExpTex;
     unsigned int    Width;
     unsigned int    Height;
+    unsigned int    NumCh;
     
 public:
     SlimeExporter(const std::string& ExportDirectory, const render::Texture& Tex);

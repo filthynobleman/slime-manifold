@@ -99,6 +99,8 @@ struct Mesh
 
     Triangle operator()(int i) const;
     Triangle& operator()(int i);
+
+    std::vector<float> UVTo3DRescale() const;
 };
 
 

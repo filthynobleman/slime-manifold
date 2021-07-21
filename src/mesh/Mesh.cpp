@@ -262,3 +262,53 @@ Triangle& mesh::Mesh::operator()(int i)
 {
     return Tris[i];
 }
+
+
+std::vector<float> mesh::Mesh::UVTo3DRescale() const
+{
+    std::vector<float> Res;
+    std::vector<Triangle>::const_iterator tit;
+    for (tit = Tris.begin(); tit != Tris.end(); tit++)
+    {
+        const Triangle t = *tit;
+        const Vertex V[3] = { Verts[t[0]], Verts[t[1]], Verts[t[2]] };
+        // Area of 3D triangle
+        glm::vec3 E3D[3] = {  V[1].Position - V[0].Position,
+                              V[2].Position - V[1].Position,
+                              V[0].Position - V[2].Position };
+        float Len3D[3];
+        float S3D = 0.0f;
+        for (int j = 0; j < 3; ++j)
+        {
+            Len3D[j] = glm::length(E3D[j]);
+            S3D += Len3D[j];
+        }
+        S3D /= 2.0f;
+        float A3D = S3D;
+        for (int j = 0; j < 3; ++j)
+            A3D *= (S3D - Len3D[j]);
+        S3D = glm::sqrt(S3D);
+        // Area of 2D triangle
+        glm::vec2 E2D[3] = { V[1].TexUV - V[0].TexUV,
+                             V[2].TexUV - V[1].TexUV,
+                             V[0].TexUV - V[2].TexUV };
+        float Len2D[3];
+        float S2D = 0.0f;
+        for (int j = 0; j < 3; ++j)
+        {
+            Len2D[j] = glm::length(E2D[j]);
+            S2D += Len2D[j];
+        }
+        S2D /= 2.0f;
+        float A2D = S2D;
+        for (int j = 0; j < 3; ++j)
+            A2D *= (S2D - Len2D[j]);
+        S2D = glm::sqrt(S2D);
+
+        // A unitary square on 3D triangle has A3D / A2D the area of the corresponding square on the UV triangle
+        // For lengths, this becomes sqrt(A3D / A2D)
+        Res.push_back(glm::sqrt(A3D / A2D));
+    }
+
+    return Res;
+}

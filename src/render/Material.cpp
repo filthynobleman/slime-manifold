@@ -109,7 +109,7 @@ Light render::LoadLight(const std::string& filename)
     return L;
 }
 
-Texture render::LoadTexture(const std::string& filename)
+Texture render::LoadTexture(const std::string& filename, unsigned char** data)
 {
     unsigned char* Buf;
     Texture Tex;
@@ -124,6 +124,8 @@ Texture render::LoadTexture(const std::string& filename)
     }
     Tex.Width = Width;
     Tex.Height = Height;
+
+    std::cout << NumCh << std::endl;
 
     switch (NumCh)
     {
@@ -163,9 +165,17 @@ Texture render::LoadTexture(const std::string& filename)
     glTexImage2D(GL_TEXTURE_2D, 0, Tex.InFormat, Tex.Width, Tex.Height, 0, Tex.Format, GL_UNSIGNED_BYTE, Buf);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    stbi_image_free(Buf);
+    if (data == NULL)
+        stbi_image_free(Buf);
+    else
+        *data = Buf;
 
     return Tex;
+}
+
+Texture render::LoadTexture(const std::string& filename)
+{
+    return LoadTexture(filename, NULL);
 }
 
 

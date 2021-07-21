@@ -14,24 +14,29 @@ __global__ void DiffuseTrailKernel(float* TrailMap, float* DiffuseTrail, int Wid
     if (i >= Width || j >= Height)
         return;
 
-    DiffuseTrail[j * Width + i] = TrailMap[j * Width + i];
+    for (int k = 0; k < Params.NumSpecies; ++k)
+        DiffuseTrail[(j * Width + i) * Params.NumSpecies + k] = TrailMap[(j * Width + i) * Params.NumSpecies + k];
 
     // Compute the mean with adjacent cells
-    float Sum = 0.0f;
-    for (int dx = -1; dx <= 1; ++dx)
+    for (int k = 0; k < Params.NumSpecies; ++k)
     {
-        int X = glm::clamp(i + dx, 0, Width - 1);
-        for (int dy = -1; dy <= 1; ++dy)
+        float Sum = 0.0f;
+        for (int dx = -1; dx <= 1; ++dx)
         {
-            int Y = glm::clamp(j + dy, 0, Height - 1);
-            Sum += TrailMap[Y * Width + X];
+            int X = glm::clamp(i + dx, 0, Width - 1);
+            for (int dy = -1; dy <= 1; ++dy)
+            {
+                int Y = glm::clamp(j + dy, 0, Height - 1);
+                int Idx = Y * Width + X;
+                Sum += TrailMap[Idx * Params.NumSpecies + k];
+            }
         }
+        float Blur = Sum / 9.0f;
+        float Orig = TrailMap[(j * Width + i) * Params.NumSpecies + k];
+        float DiffuseWeight = glm::clamp(Params.DiffuseRate * Params.DeltaTime, 0.0f, 1.0f);
+        float New = Orig * (1 - DiffuseWeight) + Blur * DiffuseWeight;
+        DiffuseTrail[(j * Width + i) * Params.NumSpecies + k] = glm::max(0.0f, New - Params.DecayRate * Params.DeltaTime);
     }
-    float Blur = Sum / 9.0f;
-    float Orig = TrailMap[j * Width + i];
-    float DiffuseWeight = glm::clamp(Params.DiffuseRate * Params.DeltaTime, 0.0f, 1.0f);
-    float New = Orig * (1 - DiffuseWeight) + Blur * DiffuseWeight;
-    DiffuseTrail[j * Width + i] = glm::max(0.0f, New - Params.DecayRate * Params.DeltaTime);
 }
 
 
