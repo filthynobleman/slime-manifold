@@ -11,7 +11,7 @@ include_directories("C:/extlibs/GLFW/include")
 include_directories(include)
 include_directories("C:/extlibs/GLAD/include")
 include_directories("C:/extlibs/glm/include")
-include_directories("C:/extlibs/STB")
+include_directories("C:/extlibs/STB/include")
 
 # Compile GLAD
 add_library(GLAD STATIC "C:/extlibs/GLAD/src/glad.c")

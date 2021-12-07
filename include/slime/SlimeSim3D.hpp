@@ -44,15 +44,16 @@ private:
     mesh::Triangle*                 dTris;
     float*                          UVTo3D;
     float*                          dTrailMap;
-    unsigned char*                  dObstacle;
     float*                          dDiffuseTrail;
+    unsigned char*                  dStaticTrail;
     GLuint                          PBO;
     SimulationParameters            Params;
     const render::Texture           TrailMapTex;
-    const render::Texture           ObstacleTex;
+    const render::Texture           StaticTex;
     int                             NVerts;
     int                             NTris;
-    bool                            IsObstacle;
+    float                           ObstacleWeight;
+    float                           AttractorWeight;
     SlimeExporter*                  Exporter;
 
     void LaunchInitAgentsKernel();
@@ -65,8 +66,8 @@ public:
                const std::vector<glm::ivec3>& T2T, const render::Texture& TMTex);
     SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
                const std::vector<glm::ivec3>& T2T, const render::Texture& TMTex,
-               const unsigned char* Obstacle, const render::Texture& ObstacleTex,
-               bool IsObstacle = true);
+               const unsigned char* StaticTrail, const render::Texture& StaticTex,
+               float ObstacleWeight = 1.0e3f, float AttractorWeight = 1.0e3f);
     ~SlimeSim3D();
 
     void InitAgents();

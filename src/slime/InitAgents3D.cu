@@ -7,8 +7,8 @@ using namespace slime;
 
 
 
-__global__ void InitAgentsKernel(Agent* Agents, mesh::Vertex* Verts, mesh::Triangle* Tris, float* TrailMap, unsigned char* Obstacle,
-                                 int Width, int Height, bool IsObstacle, SimulationParameters Params)
+__global__ void InitAgentsKernel(Agent* Agents, mesh::Vertex* Verts, mesh::Triangle* Tris, float* TrailMap, unsigned char* StaticTrail,
+                                 int Width, int Height, SimulationParameters Params)
 {
     int AgentID = blockDim.x * blockIdx.x + threadIdx.x;
     if (AgentID >= Params.NumAgents)
@@ -21,7 +21,7 @@ __global__ void InitAgentsKernel(Agent* Agents, mesh::Vertex* Verts, mesh::Trian
     A.SpeciesID = A.RandState % Params.NumSpecies;
     
     // While agent position is inside an obstacle, recompute triangle and position
-    unsigned char ObstacleVal = 0;
+    bool InitOK = false;
     do
     {
         // Compute a random triangle
@@ -58,20 +58,22 @@ __global__ void InitAgentsKernel(Agent* Agents, mesh::Vertex* Verts, mesh::Trian
         assert(A.Pos.x >= 0);
         assert(A.Pos.x <= 1);
 
-        // Get the obstacle amount at agent's position
-        if (Obstacle != NULL)
+        // Init the agent where needed
+        if (StaticTrail != NULL)
         {
             int X = (int)(A.Pos.x * (Width - 1));
             int Y = (int)(A.Pos.y * (Height - 1));
             X = glm::clamp(X, 0, Width - 1);
             Y = glm::clamp(Y, 0, Height - 1);
-            ObstacleVal = Obstacle[Y * Width + X];
-
-            if (!IsObstacle)
-                ObstacleVal = (ObstacleVal > 0) ? 0 : 255;
+            unsigned char InitVal = StaticTrail[3 * (Y * Width + X)];
+            unsigned char ObstacleVal = StaticTrail[3 * (Y * Width + X) + 1];
+            float InitProbability = (InitVal - ObstacleVal) / 255.0f;
+            A.RandState = RandHash(A.RandState);
+            if (ScaleTo01(A.RandState) <= InitProbability)
+                InitOK = true;
         }
     }
-    while (ObstacleVal > 0);
+    while (!InitOK);
 
     // Update the agent in the array
     Agents[AgentID] = A;
@@ -84,6 +86,6 @@ void slime::SlimeSim3D::LaunchInitAgentsKernel()
 {
     dim3 bSize(1024);
     dim3 gSize((Params.NumAgents + bSize.x - 1) / bSize.x);
-    InitAgentsKernel<<<gSize, bSize>>>(dAgents, dVerts, dTris, dTrailMap, dObstacle, TrailMapTex.Width, TrailMapTex.Height, IsObstacle, Params);
+    InitAgentsKernel<<<gSize, bSize>>>(dAgents, dVerts, dTris, dTrailMap, dStaticTrail, TrailMapTex.Width, TrailMapTex.Height, Params);
     cudaErrorCheck(cudaDeviceSynchronize());
 }

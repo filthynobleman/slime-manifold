@@ -214,7 +214,7 @@ __device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh
     return ep;
 }
 
-__device__ float Sense(glm::vec2 Centre, int SpeciesID, float* TrailMap, unsigned char* Obstacle, int Width, int Height, bool IsObstacle, SimulationParameters Params)
+__device__ float Sense(glm::vec2 Centre, int SpeciesID, float* TrailMap, unsigned char* StaticTrail, int Width, int Height, float ObstacleWeight, float AttractorWeight, SimulationParameters Params)
 {
     glm::ivec2 Coords(int(Centre.x * (Width - 1)), int(Centre.y * (Height - 1)));
     float Sum = 0.0f;
@@ -227,20 +227,23 @@ __device__ float Sense(glm::vec2 Centre, int SpeciesID, float* TrailMap, unsigne
             int Idx = Y * Width + X;
             for (int k = 0; k < Params.NumSpecies; ++k)
             {
-                float Sign = (k == SpeciesID) ? 1.0f : -1.0f;
+                float Sign = ((int)(k == SpeciesID)) - ((int)(k != SpeciesID));
                 Sum += Sign * TrailMap[Idx * Params.NumSpecies + k];
             }
-            if (Obstacle != NULL && IsObstacle)
+            if (StaticTrail != NULL)
             {
-                float ObstacleValue = Obstacle[Idx] / 255.0f;
-                Sum -= (TrailMap[Idx * Params.NumSpecies + SpeciesID] + 1) * ObstacleValue * 10.0f;
+                float ObstacleValue = StaticTrail[3 * Idx + 1] / 255.0f;
+                ObstacleValue *= ObstacleWeight;
+                float AttractValue = StaticTrail[3 * Idx + 2] / 255.0f;
+                AttractValue *= AttractorWeight;
+                Sum += AttractValue - ObstacleValue;
             }
         }
     }
     return Sum;
 }
 
-__device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* Obstacle, int Width, int Height, bool IsObstacle,
+__device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* StaticTrail, int Width, int Height, float ObstacleWeight, float AttractorWeight,
                          mesh::Vertex* Verts, mesh::Triangle* Tris, glm::ivec3* T2T, float* UV3D,
                          SimulationParameters Params)
 {
@@ -249,19 +252,19 @@ __device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* Obstacle, int 
 
     // Look forward
     EndPos SensorFwd = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, UV3D, Params);
-    float Fwd = Sense(SensorFwd.Pos, A.SpeciesID, TrailMap, Obstacle, Width, Height, IsObstacle, Params);
+    float Fwd = Sense(SensorFwd.Pos, A.SpeciesID, TrailMap, StaticTrail, Width, Height, ObstacleWeight, AttractorWeight, Params);
 
     // Look right
     Dir.x = glm::cos(A.Angle + glm::radians(Params.VisionAngle));
     Dir.y = glm::sin(A.Angle + glm::radians(Params.VisionAngle));
     EndPos SensorRight = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, UV3D, Params);
-    float Right = Sense(SensorRight.Pos, A.SpeciesID, TrailMap, Obstacle, Width, Height, IsObstacle, Params);
+    float Right = Sense(SensorRight.Pos, A.SpeciesID, TrailMap, StaticTrail, Width, Height, ObstacleWeight, AttractorWeight, Params);
 
     // Look left
     Dir.x = glm::cos(A.Angle - glm::radians(Params.VisionAngle));
     Dir.y = glm::sin(A.Angle - glm::radians(Params.VisionAngle));
     EndPos SensorLeft = CalcEndPosition(A.Pos, Dir * Params.VisionDist, A.TriID, Tris, Verts, T2T, UV3D, Params);
-    float Left = Sense(SensorLeft.Pos, A.SpeciesID, TrailMap, Obstacle, Width, Height, IsObstacle, Params);
+    float Left = Sense(SensorLeft.Pos, A.SpeciesID, TrailMap, StaticTrail, Width, Height, ObstacleWeight, AttractorWeight, Params);
 
 
     // If greater concentration of pheromone is forward, go ahead
@@ -287,8 +290,8 @@ __device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* Obstacle, int 
 }
 
 
-__global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, unsigned char* Obstacle, int Width, int Height, 
-                                      bool IsObstacle, SimulationParameters Params,
+__global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, unsigned char* StaticTrail, int Width, int Height, 
+                                      float ObstacleWeight, float AttractorWeight, SimulationParameters Params,
                                       mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D)
 {
     int AgentID = blockDim.x * blockIdx.x + threadIdx.x;
@@ -297,7 +300,7 @@ __global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, unsigned c
 
     // Get the agent and determine direction
     Agent A = Agents[AgentID];
-    A = NextDir(A, TrailMap, Obstacle, Width, Height, IsObstacle, Verts, Tris, T2T, UV3D, Params);
+    A = NextDir(A, TrailMap, StaticTrail, Width, Height, ObstacleWeight, AttractorWeight, Verts, Tris, T2T, UV3D, Params);
 
     // Move the agent
     glm::vec2 Dir(glm::cos(A.Angle), glm::sin(A.Angle));
@@ -323,6 +326,7 @@ void slime::SlimeSim3D::LaunchUpdatePositionsKernel()
 {
     dim3 bSize(1024);
     dim3 gSize((Params.NumAgents + bSize.x - 1) / bSize.x);
-    UpdatePositionsKernel<<<gSize, bSize>>>(dAgents, dTrailMap, dObstacle, TrailMapTex.Width, TrailMapTex.Height, IsObstacle, Params, dTris, dVerts, dT2T, UVTo3D);
+    UpdatePositionsKernel<<<gSize, bSize>>>(dAgents, dTrailMap, dStaticTrail, TrailMapTex.Width, TrailMapTex.Height, 
+                                            ObstacleWeight, AttractorWeight, Params, dTris, dVerts, dT2T, UVTo3D);
     cudaErrorCheck(cudaDeviceSynchronize());
 }

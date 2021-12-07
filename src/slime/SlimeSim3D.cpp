@@ -7,7 +7,7 @@ using namespace slime;
 
 slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
                               const std::vector<glm::ivec3>& T2T, const render::Texture &TMTex)
-    : TrailMapTex(TMTex), ObstacleTex(TMTex), NVerts(Mesh.NVerts()), NTris(Mesh.NTris())
+    : TrailMapTex(TMTex), StaticTex(TMTex), NVerts(Mesh.NVerts()), NTris(Mesh.NTris())
 {
     // Load parameters
     Params = slime::LoadFromFile(ParamsFile);
@@ -20,7 +20,7 @@ slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& M
     cudaErrorCheck(cudaAllocCopy<glm::ivec3>(&dT2T, T2T.data(), NTris));
     cudaErrorCheck(cudaAllocCopy<float>(&UVTo3D, Mesh.UVTo3DRescale().data(), Mesh.NTris()));
     cudaErrorCheck(cudaCalloc<float>(&dTrailMap, TMTex.Width * TMTex.Height * Params.NumSpecies));
-    dObstacle = NULL;
+    dStaticTrail = NULL;
 
     // Create the pixel buffer object
     glGenBuffers(1, &PBO);
@@ -34,12 +34,13 @@ slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& M
 
 slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
                               const std::vector<glm::ivec3>& T2T, const render::Texture &TMTex,
-                              const unsigned char* Obstacle, const render::Texture& ObstacleTex,
-                              bool IsObstacle)
-    : TrailMapTex(TMTex), ObstacleTex(ObstacleTex), NVerts(Mesh.NVerts()), NTris(Mesh.NTris()), IsObstacle(IsObstacle)
+                              const unsigned char* StaticTrail, const render::Texture& StaticTex,
+                              float ObstacleWeight, float AttractorWeight)
+    : TrailMapTex(TMTex), StaticTex(StaticTex), NVerts(Mesh.NVerts()), NTris(Mesh.NTris()), 
+      ObstacleWeight(ObstacleWeight), AttractorWeight(AttractorWeight)
 {
-    assert(ObstacleTex.Width == TMTex.Width);
-    assert(ObstacleTex.Height == TMTex.Height);
+    assert(StaticTex.Width == TMTex.Width);
+    assert(StaticTex.Height == TMTex.Height);
 
     // Load parameters
     Params = slime::LoadFromFile(ParamsFile);
@@ -52,7 +53,7 @@ slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& M
     cudaErrorCheck(cudaAllocCopy<glm::ivec3>(&dT2T, T2T.data(), NTris));
     cudaErrorCheck(cudaAllocCopy<float>(&UVTo3D, Mesh.UVTo3DRescale().data(), Mesh.NTris()));
     cudaErrorCheck(cudaCalloc<float>(&dTrailMap, TMTex.Width * TMTex.Height * Params.NumSpecies));
-    cudaErrorCheck(cudaAllocCopy<unsigned char>(&dObstacle, Obstacle, TMTex.Width * TMTex.Height));
+    cudaErrorCheck(cudaAllocCopy<unsigned char>(&dStaticTrail, StaticTrail, TMTex.Width * TMTex.Height));
 
     // Create the pixel buffer object
     glGenBuffers(1, &PBO);
@@ -74,8 +75,8 @@ slime::SlimeSim3D::~SlimeSim3D()
     cudaErrorCheck(cudaFree(dTris));
     cudaErrorCheck(cudaFree(dT2T));
     cudaErrorCheck(cudaFree(dTrailMap));
-    if (dObstacle != NULL)
-        cudaErrorCheck(cudaFree(dObstacle));
+    if (dStaticTrail != NULL)
+        cudaErrorCheck(cudaFree(dStaticTrail));
     if (Exporter != NULL)
         delete Exporter;
 }
