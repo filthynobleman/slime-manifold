@@ -9,10 +9,11 @@
 #include <render/MeshRenderEngine.hpp>
 #include <slime/SlimeSim3D.hpp>
 
+#include <stb_image.h>
+
 #include <cuda_gl_interop.h>
 
 #include <utils/CUDAUtils.h>
-#include <chrono>
 
 
 std::ostream& operator<<(std::ostream& os, const glm::vec3& v)
@@ -31,7 +32,7 @@ void Usage(const char* argv0)
 {
     std::cerr << "Bad syntax." << std::endl;
     std::cerr << "Correct syntax for calling " << argv0 << " is" << std::endl;
-    std::cerr << "    " << argv0 << " config_file obj_file [ tex_res [export_video [mtl_file [light_file]]]]" << std::endl;
+    std::cerr << "    " << argv0 << " config_file obj_file obstacle_tex [export_video [mtl_file [light_file]]]" << std::endl;
 }
 
 
@@ -47,10 +48,8 @@ int main(int argc, const char** argv)
 
         std::string ConfigFile(argv[1]);
         std::string MeshFile(argv[2]);
-        GLuint TexRes = 1024;
+        std::string ObstacleFile(argv[3]);
         bool ExportVideo = false;
-        if (argc > 3)
-            TexRes = std::atoi(argv[3]);
         if (argc > 4)
             ExportVideo = std::atoi(argv[4]) > 0;
         std::string MatFile("../data/meshes/default.mtl");
@@ -59,6 +58,8 @@ int main(int argc, const char** argv)
         std::string LightFile("../data/meshes/default.light");
         if (argc > 6)
             LightFile = argv[6];
+
+        stbi_set_flip_vertically_on_load(1);
 
 
         mesh::MeshLoader ML;
@@ -74,6 +75,11 @@ int main(int argc, const char** argv)
         // render::Texture Plaster = render::LoadTexture("../data/textures/white_plaster_01_diffuse.png");
         // render::Texture Concrete = render::LoadTexture("../data/textures/green_concrete_pavement_diffuse.png");
         // render::Texture Slime = render::CreateTexture(4096, 4096, GL_RED);
+        unsigned char* Obstacle;
+        render::Texture ObstacleTex = render::LoadTexture(ObstacleFile, &Obstacle);
+        GLuint TexRes = ObstacleTex.Width;
+        assert(TexRes == ObstacleTex.Height);
+        
         slime::SimulationParameters Params = slime::LoadFromFile(ConfigFile);
         GLenum Format;
         switch (Params.NumSpecies)
@@ -99,37 +105,19 @@ int main(int argc, const char** argv)
         // render::MeshRenderEngine::AddTexture("Concrete", Concrete);
         render::MeshRenderEngine::AddTexture("NoiseTex", Slime);
 
-        slime::SlimeSim3D SS3D(ConfigFile, M, ML.GetTri2TriAdjMap(), Slime);
+        slime::SlimeSim3D SS3D(ConfigFile, M, ML.GetTri2TriAdjMap(), Slime, Obstacle, ObstacleTex, false);
         SS3D.InitAgents();
 
         unsigned int NumFrame = 0;
-        float AvgTPF = 0.0f;
-        float MaxTPF = -INFINITY;
-        float MinTPF = INFINITY;
-        glfwSwapInterval(0);
         while (!render::MeshRenderEngine::ShouldClose())
         {
-            std::chrono::system_clock::time_point Start = std::chrono::system_clock::now();
-
             SS3D.SimulationStep();
             SS3D.WriteTexture();
             render::MeshRenderEngine::Draw();
 
             if (render::MeshRenderEngine::MustExport() || ExportVideo)
                 SS3D.ExportFrame();
-
-            std::chrono::system_clock::time_point End = std::chrono::system_clock::now();
-            float TPF = std::chrono::duration_cast<std::chrono::nanoseconds>(End - Start).count();
-            AvgTPF += TPF;
-            MaxTPF = glm::max(MaxTPF, TPF);
-            MinTPF = glm::min(MinTPF, TPF);
-            NumFrame += 1;
         }
-
-        AvgTPF /= NumFrame;
-        std::cout << "Average TPF: " << AvgTPF / 1e6f << std::endl;
-        std::cout << "Maximum TPF: " << MaxTPF / 1e6f << std::endl;
-        std::cout << "Minimum TPF: " << MinTPF / 1e6f << std::endl;
     }
     catch(const std::exception& e)
     {

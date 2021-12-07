@@ -34,8 +34,9 @@ slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& M
 
 slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
                               const std::vector<glm::ivec3>& T2T, const render::Texture &TMTex,
-                              const unsigned char* Obstacle, const render::Texture& ObstacleTex)
-    : TrailMapTex(TMTex), ObstacleTex(ObstacleTex), NVerts(Mesh.NVerts()), NTris(Mesh.NTris())
+                              const unsigned char* Obstacle, const render::Texture& ObstacleTex,
+                              bool IsObstacle)
+    : TrailMapTex(TMTex), ObstacleTex(ObstacleTex), NVerts(Mesh.NVerts()), NTris(Mesh.NTris()), IsObstacle(IsObstacle)
 {
     assert(ObstacleTex.Width == TMTex.Width);
     assert(ObstacleTex.Height == TMTex.Height);

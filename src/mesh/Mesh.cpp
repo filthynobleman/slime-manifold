@@ -1,6 +1,5 @@
 #include <mesh/Mesh.hpp>
 
-
 using namespace mesh;
 
 
@@ -161,6 +160,24 @@ int& mesh::Triangle::operator[](int i)
     return Verts[i];
 }
 
+// glm::vec3 mesh::Triangle::Normal(const Mesh& M) const
+// {
+//     glm::vec3 P1 = M[Verts[0]].Position;
+//     glm::vec3 P2 = M[Verts[1]].Position;
+//     glm::vec3 P3 = M[Verts[2]].Position;
+
+//     // Get edges
+//     glm::vec3 E12 = P2 - P1;
+//     glm::vec3 E23 = P3 - P2;
+//     glm::vec3 E31 = P1 - P3;
+
+//     // Compute normal
+//     glm::vec3 N = glm::cross(E12, -E31);
+//     N = N + glm::cross(E23, -E12);
+//     N = N + glm::cross(E31, -E23);
+//     return glm::normalize(N);
+// }
+
 bool mesh::operator==(const Triangle& t1, const Triangle& t2)
 {
     int i;
@@ -287,7 +304,7 @@ std::vector<float> mesh::Mesh::UVTo3DRescale() const
         float A3D = S3D;
         for (int j = 0; j < 3; ++j)
             A3D *= (S3D - Len3D[j]);
-        S3D = glm::sqrt(S3D);
+        A3D = glm::sqrt(A3D);
         // Area of 2D triangle
         glm::vec2 E2D[3] = { V[1].TexUV - V[0].TexUV,
                              V[2].TexUV - V[1].TexUV,
@@ -303,11 +320,13 @@ std::vector<float> mesh::Mesh::UVTo3DRescale() const
         float A2D = S2D;
         for (int j = 0; j < 3; ++j)
             A2D *= (S2D - Len2D[j]);
-        S2D = glm::sqrt(S2D);
+        A2D = glm::sqrt(A2D);
 
         // A unitary square on 3D triangle has A3D / A2D the area of the corresponding square on the UV triangle
         // For lengths, this becomes sqrt(A3D / A2D)
         Res.push_back(glm::sqrt(A3D / A2D));
+        // Res.push_back(1.0f);
+        // Res.push_back(A3D / A2D);
     }
 
     return Res;

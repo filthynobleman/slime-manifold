@@ -2,19 +2,19 @@ cmake_minimum_required(VERSION 3.19)
 project(SlimeSimulation LANGUAGES C CXX CUDA)
 
 # Search for GLFW and OpenGL
-list(APPEND CMAKE_PREFIX_PATH "C:/include/GLFW")
+list(APPEND CMAKE_PREFIX_PATH "C:/extlibs/GLFW")
 find_package(glfw3 3.3 REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # Add include dependencies
-include_directories("C:/include/GLFW/include")
+include_directories("C:/extlibs/GLFW/include")
 include_directories(include)
-include_directories(C:/include/GLAD)
-include_directories(C:/include/GLM)
-include_directories(C:/include/STB)
+include_directories("C:/extlibs/GLAD/include")
+include_directories("C:/extlibs/glm/include")
+include_directories("C:/extlibs/STB")
 
 # Compile GLAD
-add_library(GLAD STATIC C:/include/GLAD/src/glad.c)
+add_library(GLAD STATIC "C:/extlibs/GLAD/src/glad.c")
 
 # Compile STB
 add_library(STB STATIC src/stb_image.cpp)
@@ -41,6 +41,7 @@ target_link_libraries(Render Mesh STB)
 # Executables
 add_executable(Slime3D src/slime3d.cpp)
 add_executable(SlimeObstacle3D src/slime3dobstacle.cpp)
+add_executable(SlimeInitMap3D src/slime3dinitmap.cpp)
 target_compile_options(Slime3D PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
                        --generate-line-info
                        --use_fast_math
@@ -54,6 +55,7 @@ target_compile_options(SlimeObstacle3D PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
 
 target_link_libraries(Slime3D Render Mesh Slime STB GLAD glfw OpenGL::GL cudart)
 target_link_libraries(SlimeObstacle3D Render Mesh Slime STB GLAD glfw OpenGL::GL cudart)
+target_link_libraries(SlimeInitMap3D Render Mesh Slime STB GLAD glfw OpenGL::GL cudart)
 
 
 # Copy shaders to build directory

@@ -13,7 +13,7 @@
 
 
 // Hash function www.cs.ubc.ca/~rbridson/docs/schechter-sca08-turbulence.pdf
-__device__ inline unsigned int RandHash(unsigned int State)
+__host__ __device__ inline unsigned int RandHash(unsigned int State)
 {
     State ^= 2747636419u;
     State *= 2654435769u;
@@ -25,7 +25,7 @@ __device__ inline unsigned int RandHash(unsigned int State)
 }
 
 
-__device__ inline float ScaleTo01(unsigned int State)
+__host__ __device__ inline float ScaleTo01(unsigned int State)
 {
     return State / 4294967295.0f;
 }

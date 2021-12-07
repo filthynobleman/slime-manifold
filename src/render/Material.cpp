@@ -125,8 +125,6 @@ Texture render::LoadTexture(const std::string& filename, unsigned char** data)
     Tex.Width = Width;
     Tex.Height = Height;
 
-    std::cout << NumCh << std::endl;
-
     switch (NumCh)
     {
     case 1:

@@ -52,6 +52,7 @@ private:
     const render::Texture           ObstacleTex;
     int                             NVerts;
     int                             NTris;
+    bool                            IsObstacle;
     SlimeExporter*                  Exporter;
 
     void LaunchInitAgentsKernel();
@@ -64,7 +65,8 @@ public:
                const std::vector<glm::ivec3>& T2T, const render::Texture& TMTex);
     SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& Mesh, 
                const std::vector<glm::ivec3>& T2T, const render::Texture& TMTex,
-               const unsigned char* Obstacle, const render::Texture& ObstacleTex);
+               const unsigned char* Obstacle, const render::Texture& ObstacleTex,
+               bool IsObstacle = true);
     ~SlimeSim3D();
 
     void InitAgents();

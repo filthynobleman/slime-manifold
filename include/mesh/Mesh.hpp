@@ -69,6 +69,8 @@ struct Triangle
 
     int operator[](int i) const;
     int& operator[](int i);
+
+    //glm::vec3 Normal(const Mesh& M) const;
 };
 
 bool operator==(const Triangle& t1, const Triangle& t2);
