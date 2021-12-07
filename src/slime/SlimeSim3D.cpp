@@ -53,7 +53,7 @@ slime::SlimeSim3D::SlimeSim3D(const std::string& ParamsFile, const mesh::Mesh& M
     cudaErrorCheck(cudaAllocCopy<glm::ivec3>(&dT2T, T2T.data(), NTris));
     cudaErrorCheck(cudaAllocCopy<float>(&UVTo3D, Mesh.UVTo3DRescale().data(), Mesh.NTris()));
     cudaErrorCheck(cudaCalloc<float>(&dTrailMap, TMTex.Width * TMTex.Height * Params.NumSpecies));
-    cudaErrorCheck(cudaAllocCopy<unsigned char>(&dStaticTrail, StaticTrail, TMTex.Width * TMTex.Height));
+    cudaErrorCheck(cudaAllocCopy<unsigned char>(&dStaticTrail, StaticTrail, TMTex.Width * TMTex.Height * 3));
 
     // Create the pixel buffer object
     glGenBuffers(1, &PBO);

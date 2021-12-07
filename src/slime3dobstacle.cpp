@@ -106,6 +106,7 @@ int main(int argc, const char** argv)
         render::MeshRenderEngine::AddTexture("NoiseTex", Slime);
         render::MeshRenderEngine::AddTexture("ObstacleTex", ObstacleTex);
 
+
         slime::SlimeSim3D SS3D(ConfigFile, M, ML.GetTri2TriAdjMap(), Slime, Obstacle, ObstacleTex);
         SS3D.InitAgents();
 

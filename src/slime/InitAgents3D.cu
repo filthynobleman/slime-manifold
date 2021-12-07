@@ -72,6 +72,8 @@ __global__ void InitAgentsKernel(Agent* Agents, mesh::Vertex* Verts, mesh::Trian
             if (ScaleTo01(A.RandState) <= InitProbability)
                 InitOK = true;
         }
+        else
+            InitOK = true;
     }
     while (!InitOK);
 
