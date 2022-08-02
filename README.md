@@ -1,6 +1,10 @@
 # Slime Mold Simulation on Manifold Meshes
 
-This repository contains the code for computing a slime mold simulation on triangular manifold meshes.  
+This repository contains the code for computing a slime mold simulation on triangular manifold meshes, as described in the manuscript *MoMaS: Mold Manifold Simulation for real-time procedural texturing* (a link will be added soon).  
+
+> **Warning**
+> The code contained in this repository is only intended for the reproducibility of the manuscript. It is not intended for easy readability or cross-platform compilation.  
+> _**The repository will be soon marked as deprecated and replaced with a definitive version.**_
 
 
 ## Installation
