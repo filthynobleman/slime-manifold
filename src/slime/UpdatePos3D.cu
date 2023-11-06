@@ -117,12 +117,15 @@ __device__ glm::vec4 ProjOnTri(glm::vec3 P, glm::vec3 P1, glm::vec3 P2, glm::vec
 }
 
 
-__device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D)
+__device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, glm::mat3* UV3D)
 {
     EndPos ep;
     ep.Pos = Pos;
     ep.Dir = Move;
     ep.TriID = TriID;
+
+    glm::vec3 Move3D = UV3D[TriID] * glm::vec3(Move, 0.0f);
+    float MoveScale = glm::sqrt(glm::dot(Move, Move) / glm::dot(Move3D, Move3D));
 
     // Get the vertex indices of the triangles
     glm::ivec3 TV = Tris[TriID].Verts;
@@ -133,12 +136,12 @@ __device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, 
     glm::vec2 UV3 = Verts[TV[2]].TexUV;
 
     // Convert to barycentric
-    glm::vec3 L = D2ToBaryc(Pos + Move / UV3D[TriID], UV1, UV2, UV3);
+    glm::vec3 L = D2ToBaryc(Pos + Move * MoveScale, UV1, UV2, UV3);
 
     // Non-negative coordinates = point inside
     if (L.x >= 0 && L.y >= 0 && L.z >= 0)
     {
-        ep.Pos += Move / UV3D[TriID];
+        ep.Pos += Move * MoveScale;
         return ep;
     }
 
@@ -201,14 +204,13 @@ __device__ EndPos CalcEndPositionStep(glm::vec2 Pos, glm::vec2 Move, int TriID, 
     return ep;
 }
 
-__device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D, SimulationParameters Params)
+__device__ EndPos CalcEndPosition(glm::vec2 Pos, glm::vec2 Move, int TriID, mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, glm::mat3* UV3D, SimulationParameters Params)
 {
     // Get the number of steps and scale the movement
     int NumSteps = (int)glm::ceil(glm::length(Move) / Params.MoveStep);
     Move = Params.MoveStep * glm::normalize(Move);
     // Apply steps iteratively
     EndPos ep = { Pos, Move, TriID };
-    float TotMove = 0.0f;
     for (int i = 0; i < NumSteps; ++i)
         ep = CalcEndPositionStep(ep.Pos, ep.Dir, ep.TriID, Tris, Verts, T2T, UV3D);
     return ep;
@@ -244,7 +246,7 @@ __device__ float Sense(glm::vec2 Centre, int SpeciesID, float* TrailMap, unsigne
 }
 
 __device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* StaticTrail, int Width, int Height, float ObstacleWeight, float AttractorWeight,
-                         mesh::Vertex* Verts, mesh::Triangle* Tris, glm::ivec3* T2T, float* UV3D,
+                         mesh::Vertex* Verts, mesh::Triangle* Tris, glm::ivec3* T2T, glm::mat3* UV3D,
                          SimulationParameters Params)
 {
     // Get direction
@@ -292,7 +294,7 @@ __device__ Agent NextDir(Agent A, float* TrailMap, unsigned char* StaticTrail, i
 
 __global__ void UpdatePositionsKernel(Agent* Agents, float* TrailMap, unsigned char* StaticTrail, int Width, int Height, 
                                       float ObstacleWeight, float AttractorWeight, SimulationParameters Params,
-                                      mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, float* UV3D)
+                                      mesh::Triangle* Tris, mesh::Vertex* Verts, glm::ivec3* T2T, glm::mat3* UV3D)
 {
     int AgentID = blockDim.x * blockIdx.x + threadIdx.x;
     if (AgentID >= Params.NumAgents)

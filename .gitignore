@@ -1,0 +1,8 @@
+# Ignore builds
+build*
+
+# Ignore installs
+install*
+
+# Ignore VSCode garbage
+.vscode

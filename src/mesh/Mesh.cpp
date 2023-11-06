@@ -1,4 +1,5 @@
 #include <mesh/Mesh.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 using namespace mesh;
 
@@ -281,52 +282,58 @@ Triangle& mesh::Mesh::operator()(int i)
 }
 
 
-std::vector<float> mesh::Mesh::UVTo3DRescale() const
+std::vector<glm::mat3> mesh::Mesh::UVTo3DRescale() const
 {
-    std::vector<float> Res;
+    std::vector<glm::mat3> Res;
+    Res.reserve(Tris.size());
     std::vector<Triangle>::const_iterator tit;
     for (tit = Tris.begin(); tit != Tris.end(); tit++)
     {
         const Triangle t = *tit;
-        const Vertex V[3] = { Verts[t[0]], Verts[t[1]], Verts[t[2]] };
-        // Area of 3D triangle
-        glm::vec3 E3D[3] = {  V[1].Position - V[0].Position,
-                              V[2].Position - V[1].Position,
-                              V[0].Position - V[2].Position };
-        float Len3D[3];
-        float S3D = 0.0f;
-        for (int j = 0; j < 3; ++j)
-        {
-            Len3D[j] = glm::length(E3D[j]);
-            S3D += Len3D[j];
-        }
-        S3D /= 2.0f;
-        float A3D = S3D;
-        for (int j = 0; j < 3; ++j)
-            A3D *= (S3D - Len3D[j]);
-        A3D = glm::sqrt(A3D);
-        // Area of 2D triangle
-        glm::vec2 E2D[3] = { V[1].TexUV - V[0].TexUV,
-                             V[2].TexUV - V[1].TexUV,
-                             V[0].TexUV - V[2].TexUV };
-        float Len2D[3];
-        float S2D = 0.0f;
-        for (int j = 0; j < 3; ++j)
-        {
-            Len2D[j] = glm::length(E2D[j]);
-            S2D += Len2D[j];
-        }
-        S2D /= 2.0f;
-        float A2D = S2D;
-        for (int j = 0; j < 3; ++j)
-            A2D *= (S2D - Len2D[j]);
-        A2D = glm::sqrt(A2D);
+        // const Vertex V[3] = { Verts[t[0]], Verts[t[1]], Verts[t[2]] };
 
-        // A unitary square on 3D triangle has A3D / A2D the area of the corresponding square on the UV triangle
-        // For lengths, this becomes sqrt(A3D / A2D)
-        Res.push_back(glm::sqrt(A3D / A2D));
-        // Res.push_back(1.0f);
-        // Res.push_back(A3D / A2D);
+        glm::mat3 V3D(Verts[t[0]].Position, Verts[t[1]].Position, Verts[t[2]].Position);
+        glm::mat3 V2D(glm::vec3(Verts[t[0]].TexUV, 1.0f), glm::vec3(Verts[t[1]].TexUV, 1.0f), glm::vec3(Verts[t[2]].TexUV, 1.0f));
+        Res.push_back(V3D * glm::inverse(V2D));
+
+        // // Area of 3D triangle
+        // glm::vec3 E3D[3] = {  V[1].Position - V[0].Position,
+        //                       V[2].Position - V[1].Position,
+        //                       V[0].Position - V[2].Position };
+        // float Len3D[3];
+        // float S3D = 0.0f;
+        // for (int j = 0; j < 3; ++j)
+        // {
+        //     Len3D[j] = glm::length(E3D[j]);
+        //     S3D += Len3D[j];
+        // }
+        // S3D /= 2.0f;
+        // float A3D = S3D;
+        // for (int j = 0; j < 3; ++j)
+        //     A3D *= (S3D - Len3D[j]);
+        // A3D = glm::sqrt(A3D);
+        // // Area of 2D triangle
+        // glm::vec2 E2D[3] = { V[1].TexUV - V[0].TexUV,
+        //                      V[2].TexUV - V[1].TexUV,
+        //                      V[0].TexUV - V[2].TexUV };
+        // float Len2D[3];
+        // float S2D = 0.0f;
+        // for (int j = 0; j < 3; ++j)
+        // {
+        //     Len2D[j] = glm::length(E2D[j]);
+        //     S2D += Len2D[j];
+        // }
+        // S2D /= 2.0f;
+        // float A2D = S2D;
+        // for (int j = 0; j < 3; ++j)
+        //     A2D *= (S2D - Len2D[j]);
+        // A2D = glm::sqrt(A2D);
+
+        // // A unitary square on 3D triangle has A3D / A2D the area of the corresponding square on the UV triangle
+        // // For lengths, this becomes sqrt(A3D / A2D)
+        // Res.push_back(glm::sqrt(A3D / A2D));
+        // // Res.push_back(1.0f);
+        // // Res.push_back(A3D / A2D);
     }
 
     return Res;

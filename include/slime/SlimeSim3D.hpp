@@ -42,7 +42,7 @@ private:
     glm::ivec3*                     dT2T;
     mesh::Vertex*                   dVerts;
     mesh::Triangle*                 dTris;
-    float*                          UVTo3D;
+    glm::mat3*                      UVTo3D;
     float*                          dTrailMap;
     float*                          dDiffuseTrail;
     unsigned char*                  dStaticTrail;

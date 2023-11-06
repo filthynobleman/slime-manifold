@@ -102,7 +102,7 @@ struct Mesh
     Triangle operator()(int i) const;
     Triangle& operator()(int i);
 
-    std::vector<float> UVTo3DRescale() const;
+    std::vector<glm::mat3> UVTo3DRescale() const;
 };
 
 

@@ -2,19 +2,19 @@ cmake_minimum_required(VERSION 3.19)
 project(SlimeSimulation LANGUAGES C CXX CUDA)
 
 # Search for GLFW and OpenGL
-list(APPEND CMAKE_PREFIX_PATH "C:/extlibs/GLFW")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/install")
 find_package(glfw3 3.3 REQUIRED)
 find_package(OpenGL REQUIRED)
 
 # Add include dependencies
-include_directories("C:/extlibs/GLFW/include")
-include_directories(include)
-include_directories("C:/extlibs/GLAD/include")
-include_directories("C:/extlibs/glm/include")
-include_directories("C:/extlibs/STB/include")
+include_directories("${CMAKE_SOURCE_DIR}/ext/glfw/include")
+include_directories("${CMAKE_SOURCE_DIR}/include")
+include_directories("${CMAKE_SOURCE_DIR}/ext/glad/include")
+include_directories("${CMAKE_SOURCE_DIR}/ext/glm")
+include_directories("${CMAKE_SOURCE_DIR}/ext/stb")
 
 # Compile GLAD
-add_library(GLAD STATIC "C:/extlibs/GLAD/src/glad.c")
+add_library(GLAD STATIC "${CMAKE_SOURCE_DIR}/ext/glad/src/glad.c")
 
 # Compile STB
 add_library(STB STATIC src/stb_image.cpp)

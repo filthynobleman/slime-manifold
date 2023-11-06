@@ -47,7 +47,7 @@ int main(int argc, const char** argv)
 
         std::string ConfigFile(argv[1]);
         std::string MeshFile(argv[2]);
-        GLuint TexRes = 1024;
+        GLuint TexRes = 4096;
         bool ExportVideo = false;
         if (argc > 3)
             TexRes = std::atoi(argv[3]);
@@ -71,9 +71,7 @@ int main(int argc, const char** argv)
         render::MeshRenderEngine::SetCallbacks();
         render::MeshRenderEngine::CreateShader("../data/shaders/Base.vert",
                                                "../data/shaders/Textured.frag");
-        // render::Texture Plaster = render::LoadTexture("../data/textures/white_plaster_01_diffuse.png");
-        // render::Texture Concrete = render::LoadTexture("../data/textures/green_concrete_pavement_diffuse.png");
-        // render::Texture Slime = render::CreateTexture(4096, 4096, GL_RED);
+                                               
         slime::SimulationParameters Params = slime::LoadFromFile(ConfigFile);
         GLenum Format;
         switch (Params.NumSpecies)
@@ -95,8 +93,6 @@ int main(int argc, const char** argv)
         render::MeshRenderEngine::CreateBuffers(M);
         render::MeshRenderEngine::SetMaterial(Material);
         render::MeshRenderEngine::SetLight(Light);
-        // render::MeshRenderEngine::AddTexture("Plaster", Plaster);
-        // render::MeshRenderEngine::AddTexture("Concrete", Concrete);
         render::MeshRenderEngine::AddTexture("NoiseTex", Slime);
 
         slime::SlimeSim3D SS3D(ConfigFile, M, ML.GetTri2TriAdjMap(), Slime);
