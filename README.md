@@ -41,9 +41,10 @@ cmake --install .
 ### Compilation
 The compilation is completely handled with CMake. From the project's root directory, execute the following commands:
 ```sh
-    mkdir build
-    cmake ..
-    cmake --build . --config release
+mkdir build
+cd build
+cmake ..
+cmake --build . --config release
 ```
 
 
